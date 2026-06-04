@@ -1,0 +1,55 @@
+# Python 依赖
+
+## 标准库（内置，无需安装）
+- json
+- re
+- sys
+- os
+- subprocess
+- datetime
+- collections
+- dataclasses
+- typing
+- concurrent.futures
+
+## 外部依赖（可选）
+
+```bash
+# 如果需要更高级的日志分析功能
+pip install pandas  # 数据分析
+pip install numpy   # 数值计算
+
+# 如果需要生成图表报告
+pip install matplotlib  # 绘图
+pip install openpyxl    # Excel导出
+```
+
+## 安装步骤
+
+### 仅使用内置库（推荐最小化安装）
+```bash
+# 无需安装任何包，直接运行
+python iis_analyzer.py "log_file.log"
+```
+
+### 完整功能安装
+```bash
+# 克隆或下载项目
+cd IIS
+
+# 创建虚拟环境（可选但推荐）
+python -m venv venv
+venv\Scripts\activate  # Windows
+
+# 安装可选依赖
+pip install pandas numpy matplotlib openpyxl
+```
+
+## Python版本要求
+- Python 3.6 或更高版本
+- 推荐 Python 3.8+
+
+## Windows特定要求
+- PowerShell 5.0 或更高版本
+- 管理员权限（用于读取事件日志）
+- .NET Framework 4.5+ （用于.NET应用诊断）

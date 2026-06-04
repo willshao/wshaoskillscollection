@@ -1,0 +1,328 @@
+{
+  "_doc": "Standard solutions / next steps / additional logs per problem_type. Keyed by the same problem_type strings declared in registry.json. Skills consume this via _shared/playbook.py.",
+  "version": "1.0",
+  "problem_types": {
+    "crash": {
+      "solutions": [
+        {
+          "title": "Disable the most-recently-installed extension to rule out an extension crash",
+          "severity": "critical",
+          "steps": [
+            "Open edge://extensions and toggle off any extension installed in the last 7 days",
+            "Restart Edge and reproduce; re-enable one at a time",
+            "If a managed/force-installed extension is at fault, escalate to your IT admin"
+          ]
+        },
+        {
+          "title": "Update Edge to the latest stable version",
+          "severity": "warning",
+          "steps": [
+            "edge://settings/help",
+            "Restart after the update completes"
+          ],
+          "references": ["https://learn.microsoft.com/deployedge/microsoft-edge-update-faq"]
+        }
+      ],
+      "next_steps": [
+        {"action": "Enumerate recent Crashpad reports for a signature cluster", "skill": "edge_crash"},
+        {"action": "Check whether a managed policy restricts updates or features", "skill": "edge_policy"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "crashpad", "why": "Need the actual minidumps to group by crash signature",
+         "how_to_collect": "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\Crashpad\\reports\\*.dmp", "skill": "edge_crash"}
+      ]
+    },
+    "hang": {
+      "solutions": [
+        {
+          "title": "Identify the hung renderer with Edge's Browser Task Manager (Shift+Esc)",
+          "severity": "critical",
+          "steps": [
+            "Sort by CPU; end the runaway process",
+            "If a specific site is implicated, test it in InPrivate with extensions off"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Profile process footprint", "skill": "edge_performance"},
+        {"action": "Check Crashpad in case the hang ended in a kill", "skill": "edge_crash"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "crashpad", "why": "A hang may have terminated with a crash dump", "skill": "edge_crash"}
+      ]
+    },
+    "render_process_gone": {
+      "solutions": [
+        {
+          "title": "Disable hardware acceleration if GPU process is implicated",
+          "severity": "warning",
+          "steps": [
+            "edge://settings/system → toggle off 'Use hardware acceleration when available'",
+            "Restart and reproduce"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Group crash reports by process_type and signature", "skill": "edge_crash"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "crashpad", "why": "Renderer/GPU crash signature confirms whether driver vs. site is at fault", "skill": "edge_crash"}
+      ]
+    },
+    "slow_startup": {
+      "solutions": [
+        {
+          "title": "Disable Startup boost and any heavy extension that runs at launch",
+          "severity": "warning",
+          "steps": [
+            "edge://settings/system → toggle Startup boost",
+            "edge://extensions → disable extensions; re-enable one at a time"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Enumerate extensions and identify force-installed ones", "skill": "edge_extensions"}
+      ],
+      "additional_logs_needed": []
+    },
+    "high_cpu": {
+      "solutions": [
+        {
+          "title": "Find the hot renderer via Browser Task Manager and isolate the site/extension",
+          "severity": "warning",
+          "steps": [
+            "Shift+Esc to open Edge's task manager",
+            "Sort by CPU; investigate top renderer's tab/extension"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Cross-check installed extensions", "skill": "edge_extensions"}
+      ],
+      "additional_logs_needed": []
+    },
+    "high_memory": {
+      "solutions": [
+        {
+          "title": "Enable Sleeping tabs and Efficiency mode",
+          "severity": "warning",
+          "steps": [
+            "edge://settings/system → enable 'Save resources with sleeping tabs'",
+            "Set efficiency mode = Always when on battery"
+          ]
+        },
+        {
+          "title": "Audit extensions for known memory hogs",
+          "severity": "warning",
+          "steps": [
+            "Run the edge_extensions skill",
+            "Disable extensions with very large background contexts"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "List installed extensions and flag heavyweight ones", "skill": "edge_extensions"}
+      ],
+      "additional_logs_needed": []
+    },
+    "page_slow": {
+      "solutions": [
+        {
+          "title": "Confirm whether slowness is network-bound vs. CPU-bound",
+          "severity": "warning",
+          "steps": [
+            "Open edge://net-internals to capture a netlog",
+            "Compare a fast vs slow site to isolate proxy / DNS impact"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Run network diagnostics (DNS/proxy/cert)", "skill": "edge_network"},
+        {"action": "Profile process CPU usage", "skill": "edge_performance"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Captures per-request timings, redirects, proxy fallback",
+         "how_to_collect": "edge://net-export — start, reproduce, save .json", "skill": "edge_netlog"}
+      ]
+    },
+    "page_load_failure": {
+      "solutions": [
+        {
+          "title": "Validate DNS resolution and proxy configuration",
+          "severity": "critical",
+          "steps": [
+            "Resolve-DnsName <host>",
+            "Check edge://settings/system → 'Open your computer's proxy settings'"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Run DNS / proxy / cert sanity checks", "skill": "edge_network"},
+        {"action": "Confirm no managed policy blocks the URL", "skill": "edge_policy"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Pinpoints redirect chains and SSL handshake failures",
+         "how_to_collect": "edge://net-export — start, reproduce, save .json", "skill": "edge_netlog"}
+      ]
+    },
+    "cert_error": {
+      "solutions": [
+        {
+          "title": "Verify the system trusts the certificate chain",
+          "severity": "critical",
+          "steps": [
+            "certutil -verifystore Root <thumbprint>",
+            "If self-signed, import the issuing CA to Trusted Root"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Confirm date/time and revocation reachable", "skill": "edge_network"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Shows the exact handshake step that failed and the certificate chain Edge saw",
+         "how_to_collect": "edge://net-export — start, reproduce, save .json", "skill": "edge_netlog"}
+      ]
+    },
+    "proxy_issue": {
+      "solutions": [
+        {
+          "title": "Reset proxy settings to system default and retry",
+          "severity": "warning",
+          "steps": [
+            "netsh winhttp reset proxy",
+            "Restart Edge and reproduce"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Check ProxyMode / ProxyServer policy values", "skill": "edge_policy"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Shows proxy resolution decisions and fallback attempts per request",
+         "how_to_collect": "edge://net-export — start, reproduce, save .json", "skill": "edge_netlog"}
+      ]
+    },
+    "dns_issue": {
+      "solutions": [
+        {
+          "title": "Flush DNS and try a known-good resolver",
+          "severity": "warning",
+          "steps": [
+            "ipconfig /flushdns",
+            "Test with 1.1.1.1 / 8.8.8.8 to isolate local resolver"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Verify edge://settings/privacy DoH configuration", "skill": "edge_network"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "HOST_RESOLVER_IMPL events expose which resolver step failed",
+         "how_to_collect": "edge://net-export — start, reproduce, save .json", "skill": "edge_netlog"}
+      ]
+    },
+    "sync_error": {
+      "solutions": [
+        {
+          "title": "Sign out, restart Edge, sign back in to refresh sync tokens",
+          "severity": "warning",
+          "steps": [
+            "edge://settings/profiles → sign out",
+            "Restart and sign in"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Check whether sync is restricted by managed policy", "skill": "edge_policy"}
+      ],
+      "additional_logs_needed": []
+    },
+    "update_blocked": {
+      "solutions": [
+        {
+          "title": "Identify the policy that blocks updates",
+          "severity": "warning",
+          "steps": [
+            "Run edge_policy to dump update-related policies",
+            "Coordinate with IT to lift or schedule the update"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Enumerate effective Edge policies", "skill": "edge_policy"}
+      ],
+      "additional_logs_needed": []
+    },
+    "extension_issue": {
+      "solutions": [
+        {
+          "title": "Disable suspect extensions one by one",
+          "severity": "warning",
+          "steps": [
+            "edge://extensions",
+            "Disable, restart, reproduce"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Differentiate user-installed vs force-installed extensions", "skill": "edge_extensions"}
+      ],
+      "additional_logs_needed": []
+    },
+    "extension_blocked": {
+      "solutions": [
+        {
+          "title": "Check ExtensionInstallBlocklist / ExtensionInstallForcelist policies",
+          "severity": "info",
+          "steps": [
+            "Run edge_policy and search for Extension* keys"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "List effective extension policies", "skill": "edge_policy"}
+      ],
+      "additional_logs_needed": []
+    },
+    "managed_browser": {
+      "solutions": [
+        {
+          "title": "Surface the active policies to the user",
+          "severity": "info",
+          "steps": [
+            "Open edge://policy for a live view",
+            "Or run the edge_policy skill for a JSON snapshot"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Enumerate managed policies", "skill": "edge_policy"}
+      ],
+      "additional_logs_needed": []
+    },
+    "feature_blocked": {
+      "solutions": [
+        {
+          "title": "Identify the policy controlling the feature",
+          "severity": "info",
+          "steps": [
+            "Open edge://policy",
+            "Search the policy reference for the feature name"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Dump effective Edge policies", "skill": "edge_policy"}
+      ],
+      "additional_logs_needed": []
+    },
+    "question": {
+      "solutions": [],
+      "next_steps": [
+        {"action": "Look up the question in the local Q&A knowledge base", "skill": "edge_qa"}
+      ],
+      "additional_logs_needed": []
+    }
+  }
+}

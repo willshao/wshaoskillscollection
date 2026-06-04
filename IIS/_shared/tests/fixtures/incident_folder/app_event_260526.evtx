@@ -1,0 +1,1 @@
+EVTX stub — fake binary marker. Never read by the analyzer (PowerShell unavailable in CI), but present to validate discovery + error-locator skipping.

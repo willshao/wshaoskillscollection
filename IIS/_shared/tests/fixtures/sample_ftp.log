@@ -1,0 +1,28 @@
+#Software: Microsoft FTP Service
+#Version: 1.0
+#Date: 2026-05-26 09:00:00
+#Fields: date time c-ip cs-username cs-method cs-uri-stem sc-status sc-win32-status sc-substatus sc-bytes cs-bytes time-taken x-session x-fullpath
+2026-05-26 09:00:00 10.0.0.10 - USER - 331 0 0 0 0 5 sess-A -
+2026-05-26 09:00:01 10.0.0.10 alice PASS - 230 0 0 0 0 8 sess-A -
+2026-05-26 09:00:02 10.0.0.10 alice CWD /uploads 250 0 0 0 0 3 sess-A /uploads
+2026-05-26 09:00:03 10.0.0.10 alice STOR /uploads/a.bin 226 0 0 0 2048 120 sess-A /uploads/a.bin
+2026-05-26 09:00:05 10.0.0.10 alice STOR /uploads/b.bin 550 5 0 0 1024 90 sess-A /uploads/b.bin
+2026-05-26 09:00:06 10.0.0.10 alice RETR /uploads/a.bin 226 0 0 2048 0 60 sess-A /uploads/a.bin
+2026-05-26 09:00:10 10.0.0.10 alice QUIT - 221 0 0 0 0 2 sess-A -
+2026-05-26 09:01:00 10.0.0.99 - USER - 331 0 0 0 0 5 sess-B -
+2026-05-26 09:01:01 10.0.0.99 root PASS - 530 5 0 0 0 4 sess-B -
+2026-05-26 09:01:02 10.0.0.99 - USER - 331 0 0 0 0 5 sess-C -
+2026-05-26 09:01:03 10.0.0.99 admin PASS - 530 5 0 0 0 4 sess-C -
+2026-05-26 09:01:04 10.0.0.99 - USER - 331 0 0 0 0 5 sess-D -
+2026-05-26 09:01:05 10.0.0.99 oracle PASS - 530 5 0 0 0 4 sess-D -
+2026-05-26 09:01:06 10.0.0.99 - USER - 331 0 0 0 0 5 sess-E -
+2026-05-26 09:01:07 10.0.0.99 postgres PASS - 530 5 0 0 0 4 sess-E -
+2026-05-26 09:01:08 10.0.0.99 - USER - 331 0 0 0 0 5 sess-F -
+2026-05-26 09:01:09 10.0.0.99 sa PASS - 530 5 0 0 0 4 sess-F -
+2026-05-26 09:01:10 10.0.0.99 - USER - 331 0 0 0 0 5 sess-G -
+2026-05-26 09:01:11 10.0.0.99 guest PASS - 530 5 0 0 0 4 sess-G -
+2026-05-26 09:02:00 10.0.0.20 - USER - 331 0 0 0 0 5 sess-H -
+2026-05-26 09:02:01 10.0.0.20 bob PASS - 230 0 0 0 0 8 sess-H -
+2026-05-26 09:02:02 10.0.0.20 bob STOR /uploads/c.bin 550 5 0 0 100 12 sess-H /uploads/c.bin
+2026-05-26 09:02:03 10.0.0.20 bob STOR /uploads/d.bin 550 5 0 0 100 12 sess-H /uploads/d.bin
+2026-05-26 09:02:04 10.0.0.20 bob STOR /uploads/e.bin 425 5 0 0 100 12 sess-H /uploads/e.bin

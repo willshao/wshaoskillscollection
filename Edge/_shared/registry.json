@@ -1,0 +1,93 @@
+{
+  "version": "1.0",
+  "product": "Microsoft Edge (Chromium)",
+  "skills": {
+    "edge_diagnostics": {
+      "folder": "edge_diagnostics",
+      "entry": { "python": "edge_diagnostics/scripts/edge_diagnostics.py" },
+      "role": "entry_point",
+      "needs_admin": false,
+      "produces": ["problems", "environment", "skills_to_trigger"],
+      "triggers_for": []
+    },
+    "edge_crash": {
+      "folder": "edge_crash",
+      "entry": { "python": "edge_crash/scripts/edge_crash_analyzer.py" },
+      "role": "follow_up",
+      "needs_admin": false,
+      "triggers_for": ["crash", "hang", "render_process_gone"]
+    },
+    "edge_performance": {
+      "folder": "edge_performance",
+      "entry": { "python": "edge_performance/scripts/edge_performance.py" },
+      "role": "follow_up",
+      "needs_admin": false,
+      "triggers_for": ["slow_startup", "high_cpu", "high_memory", "page_slow"]
+    },
+    "edge_network": {
+      "folder": "edge_network",
+      "entry": { "python": "edge_network/scripts/edge_network.py" },
+      "role": "follow_up",
+      "needs_admin": false,
+      "triggers_for": ["page_load_failure", "cert_error", "proxy_issue", "dns_issue", "sync_error"]
+    },
+    "edge_policy": {
+      "folder": "edge_policy",
+      "entry": { "python": "edge_policy/scripts/edge_policy.py" },
+      "role": "follow_up",
+      "needs_admin": false,
+      "triggers_for": ["managed_browser", "feature_blocked", "update_blocked", "extension_blocked"]
+    },
+    "edge_extensions": {
+      "folder": "edge_extensions",
+      "entry": { "python": "edge_extensions/scripts/edge_extensions.py" },
+      "role": "follow_up",
+      "needs_admin": false,
+      "triggers_for": ["extension_issue", "high_memory", "page_slow"]
+    },
+    "edge_qa": {
+      "folder": "edge_qa",
+      "entry": { "python": "edge_qa/scripts/edge_qa.py" },
+      "role": "knowledge_base",
+      "needs_admin": false,
+      "triggers_for": ["question"]
+    },
+    "edge_netlog": {
+      "folder": "edge_netlog",
+      "entry": { "python": "edge_netlog/scripts/edge_netlog.py" },
+      "role": "follow_up",
+      "needs_admin": false,
+      "consumes_log_kind": ["netlog"],
+      "triggers_for": ["page_load_failure", "cert_error", "proxy_issue", "dns_issue", "page_slow"]
+    },
+    "orchestrator": {
+      "folder": "orchestrator",
+      "entry": { "python": "orchestrator/scripts/edge_orchestrator.py" },
+      "role": "coordinator",
+      "consumes": "edge_diagnostics.output"
+    }
+  },
+  "shared_modules": {
+    "python": "_shared/contract.py"
+  },
+  "problem_types": {
+    "crash":               {"severity_default": "critical", "follow_ups": ["edge_crash", "edge_extensions", "edge_policy"]},
+    "hang":                {"severity_default": "critical", "follow_ups": ["edge_crash", "edge_performance", "edge_extensions"]},
+    "render_process_gone": {"severity_default": "critical", "follow_ups": ["edge_crash", "edge_extensions"]},
+    "slow_startup":        {"severity_default": "warning",  "follow_ups": ["edge_performance", "edge_extensions", "edge_policy"]},
+    "high_cpu":            {"severity_default": "warning",  "follow_ups": ["edge_performance", "edge_extensions"]},
+    "high_memory":         {"severity_default": "warning",  "follow_ups": ["edge_performance", "edge_extensions"]},
+    "page_slow":           {"severity_default": "warning",  "follow_ups": ["edge_network", "edge_netlog", "edge_performance"]},
+    "page_load_failure":   {"severity_default": "critical", "follow_ups": ["edge_network", "edge_netlog", "edge_policy"]},
+    "cert_error":          {"severity_default": "critical", "follow_ups": ["edge_network", "edge_netlog", "edge_policy"]},
+    "proxy_issue":         {"severity_default": "warning",  "follow_ups": ["edge_network", "edge_netlog", "edge_policy"]},
+    "dns_issue":           {"severity_default": "warning",  "follow_ups": ["edge_network", "edge_netlog"]},
+    "sync_error":          {"severity_default": "warning",  "follow_ups": ["edge_network", "edge_policy"]},
+    "update_blocked":      {"severity_default": "warning",  "follow_ups": ["edge_policy"]},
+    "extension_issue":     {"severity_default": "warning",  "follow_ups": ["edge_extensions", "edge_policy"]},
+    "extension_blocked":   {"severity_default": "info",     "follow_ups": ["edge_policy"]},
+    "managed_browser":     {"severity_default": "info",     "follow_ups": ["edge_policy"]},
+    "feature_blocked":     {"severity_default": "info",     "follow_ups": ["edge_policy"]},
+    "question":            {"severity_default": "info",     "follow_ups": ["edge_qa"]}
+  }
+}

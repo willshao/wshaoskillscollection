@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "skill_result.schema.json",
+  "title": "Skill result envelope (v2.1)",
+  "type": "object",
+  "required": ["skill", "ok"],
+  "properties": {
+    "skill":       {"type": "string"},
+    "ok":          {"type": "boolean"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["summary", "severity"],
+        "properties": {
+          "summary":  {"type": "string"},
+          "severity": {"enum": ["critical", "warning", "info"]},
+          "evidence": {"type": "object"}
+        }
+      }
+    },
+    "root_cause":      {"type": ["string", "null"]},
+    "confidence":      {"enum": ["high", "medium", "low"]},
+    "recommendations": {"type": "array", "items": {"type": "string"}},
+    "solutions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title":       {"type": "string"},
+          "steps":       {"type": "array", "items": {"type": "string"}},
+          "problem_ref": {"type": ["string", "null"]},
+          "severity":    {"enum": ["critical", "warning", "info"]},
+          "references":  {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "next_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action"],
+        "properties": {
+          "action": {"type": "string"},
+          "why":    {"type": ["string", "null"]},
+          "skill":  {"type": ["string", "null"]}
+        }
+      }
+    },
+    "additional_logs_needed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["log_kind", "why"],
+        "properties": {
+          "log_kind":       {"type": "string"},
+          "why":            {"type": "string"},
+          "how_to_collect": {"type": ["string", "null"]},
+          "skill":          {"type": ["string", "null"]}
+        }
+      }
+    },
+    "raw":             {"type": "object"},
+    "error":           {"type": ["string", "null"]},
+    "generated_at":    {"type": "string", "format": "date-time"}
+  }
+}

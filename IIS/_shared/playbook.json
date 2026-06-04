@@ -1,0 +1,386 @@
+{
+  "_doc": "Standard solutions / next steps / additional logs per problem_type. Keyed by the same problem_type strings declared in registry.json. Skills consume this via _shared/playbook.py.",
+  "version": "1.0",
+  "problem_types": {
+    "5xx_error": {
+      "solutions": [
+        {
+          "title": "Restart the application pool serving the affected site",
+          "severity": "critical",
+          "steps": [
+            "Identify the pool: Get-IISAppPool | Where-Object State -eq Started",
+            "Recycle: Restart-WebAppPool -Name <pool>",
+            "Re-check failure rate via iis_logs --report"
+          ],
+          "references": ["https://learn.microsoft.com/iis/manage/configuring-security/application-pool-identities"]
+        },
+        {
+          "title": "Cap concurrent requests / queue length to prevent thread starvation",
+          "severity": "warning",
+          "steps": [
+            "Edit applicationHost.config: <applicationPools>/<add>/<processModel maxProcesses, queueLength>",
+            "Tune <serverRuntime appConcurrentRequestLimit> if 503 'Service Unavailable' dominates"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Correlate 5xx burst window with Application event log", "skill": "event_log"},
+        {"action": "Inspect HTTPERR for connection-abandoned reasons", "skill": "httperror"},
+        {"action": "Check for .NET runtime crashes in the same window", "skill": "app_crash"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "evtx", "why": "Need Application/System events to distinguish app vs infra failures",
+         "how_to_collect": "wevtutil epl Application app.evtx; wevtutil epl System sys.evtx", "skill": "event_log"},
+        {"log_kind": "http_err", "why": "Reveals server-side disconnect reasons not visible in W3C logs",
+         "how_to_collect": "Copy %SystemRoot%\\System32\\LogFiles\\HTTPERR\\httperr*.log", "skill": "httperror"}
+      ]
+    },
+    "high_latency": {
+      "solutions": [
+        {
+          "title": "Identify the slowest endpoint and add caching or async handling",
+          "severity": "warning",
+          "steps": [
+            "Sort iis_logs report by p95 time-taken per cs-uri-stem",
+            "For data-bound endpoints add output-cache; for upstream calls switch to async I/O"
+          ]
+        },
+        {
+          "title": "Check host resource saturation around the slow window",
+          "severity": "warning",
+          "steps": [
+            "Run resource_monitor against the same time_range",
+            "If CPU > 85% sustained, scale out or tune compression/SSL offload"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Sample perf counters during the slow window", "skill": "resource_monitor"},
+        {"action": "Cross-check Application event log for GC / pool recycle events", "skill": "event_log"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "perf_counter", "why": "Confirm CPU/disk/memory contribution", "skill": "resource_monitor"}
+      ]
+    },
+    "auth_error": {
+      "solutions": [
+        {
+          "title": "Verify the auth provider (Windows / Forms / Bearer) matches the request",
+          "severity": "warning",
+          "steps": [
+            "Inspect web.config <authentication>; ensure modules are loaded",
+            "Test with a known-good principal to isolate config vs. credential issue"
+          ]
+        },
+        {
+          "title": "If 401 spikes from few IPs, treat as credential stuffing — apply lockout",
+          "severity": "critical",
+          "steps": [
+            "Block source IPs at firewall (see firewall skill)",
+            "Enable Account Lockout policy via secpol.msc",
+            "Audit Security event log for 4625 events"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Audit Security event log for 4625 / 4740", "skill": "security_audit"},
+        {"action": "Correlate failing principals across hosts", "skill": "event_log"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "security_evtx", "why": "401 alone does not show which principal failed",
+         "how_to_collect": "wevtutil epl Security sec.evtx (requires admin)", "skill": "security_audit"}
+      ]
+    },
+    "suspicious_traffic": {
+      "solutions": [
+        {
+          "title": "Drop or rate-limit the offending source ranges at the perimeter",
+          "severity": "critical",
+          "steps": [
+            "Use firewall skill recommendations to draft block rules",
+            "Review WAF / reverse proxy logs to confirm no legitimate clients in the same range"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Pull Windows Firewall log for the same window", "skill": "firewall"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "firewall", "why": "Confirm whether requests were already dropped at TCP layer", "skill": "firewall"}
+      ]
+    },
+    "not_found": {
+      "solutions": [
+        {
+          "title": "Audit broken links / missing static assets",
+          "severity": "info",
+          "steps": [
+            "Group the 404 URIs and verify the file/route should exist",
+            "If a deploy removed files, restore them or update referring pages"
+          ]
+        }
+      ],
+      "next_steps": [],
+      "additional_logs_needed": []
+    },
+    "traffic_spike": {
+      "solutions": [
+        {
+          "title": "Verify capacity headroom for the observed peak rate",
+          "severity": "warning",
+          "steps": [
+            "Compute peak RPS from iis_logs metrics",
+            "If single-host > 70% CPU at peak, plan horizontal scale-out"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Confirm resource utilisation during the peak", "skill": "resource_monitor"}
+      ],
+      "additional_logs_needed": []
+    },
+    "ftp_auth_failure": {
+      "solutions": [
+        {
+          "title": "Tighten FTP authentication and disable Basic over plaintext",
+          "severity": "warning",
+          "steps": [
+            "In IIS Manager > FTP Authentication, disable Anonymous if not required",
+            "Require FTPS (Explicit TLS) and reject plaintext logons"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Look for matching firewall drops or admits", "skill": "firewall"},
+        {"action": "Check Security log for 4625 events from the same source", "skill": "security_audit"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "firewall", "why": "Confirm source IPs are not already blocked", "skill": "firewall"}
+      ]
+    },
+    "ftp_upload_error": {
+      "solutions": [
+        {
+          "title": "Check disk space and FTP user write permissions",
+          "severity": "warning",
+          "steps": [
+            "Get-PSDrive C; verify free space",
+            "Verify NTFS ACLs on the upload root for the FTP user"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Inspect Application/System events around the failure window", "skill": "event_log"}
+      ],
+      "additional_logs_needed": []
+    },
+    "ftp_brute_force": {
+      "solutions": [
+        {
+          "title": "Block the attacking IP range and enable connection throttling",
+          "severity": "critical",
+          "steps": [
+            "Add a Windows Firewall block rule for the offending /24 or /16",
+            "Enable FTP IP Restrictions: set 'Allow only specified clients'",
+            "Force account lockout after N failures via Local Security Policy"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Cross-reference dropped packets in firewall log", "skill": "firewall"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "firewall", "why": "Confirm whether the firewall already mitigates the brute-force", "skill": "firewall"}
+      ]
+    },
+    "ftp_incomplete_session": {
+      "solutions": [
+        {
+          "title": "Investigate client disconnects (network jitter, idle timeout)",
+          "severity": "info",
+          "steps": [
+            "Check FTP service idle-timeout (default 120s)",
+            "Increase if legitimate large uploads time out"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Look for SCHANNEL / TCP/IP events in System log", "skill": "event_log"}
+      ],
+      "additional_logs_needed": []
+    },
+    "client_request_failure": {
+      "solutions": [
+        {
+          "title": "Compare client-side net-export with IIS access log",
+          "severity": "warning",
+          "steps": [
+            "Reproduce the request with edge://net-export active",
+            "Correlate the netlog URL_REQUEST entry against the IIS W3C row for the same timestamp",
+            "If IIS never received the request, treat as a network / proxy / TLS issue"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Replay the request with curl --trace to isolate the failure layer", "skill": "netlog"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Client-side view is required to determine whether the request ever reached IIS.",
+         "how_to_collect": "Open edge://net-export, click Start Logging To Disk, reproduce the failure, then Stop.",
+         "skill": "netlog"}
+      ]
+    },
+    "cert_error": {
+      "solutions": [
+        {
+          "title": "Verify the certificate chain served by the IIS binding",
+          "severity": "critical",
+          "steps": [
+            "openssl s_client -connect <host>:443 -servername <host>",
+            "Check the binding: Get-WebBinding -Name <site> | Select-Object protocol, bindingInformation, certificateHash"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Confirm the failing intermediate from the netlog SSL events", "skill": "netlog"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Reveals the exact TLS handshake / cert-validation failure the client saw.",
+         "how_to_collect": "Open edge://net-export, click Start Logging To Disk, reproduce the failure, then Stop.",
+         "skill": "netlog"}
+      ]
+    },
+    "dns_issue": {
+      "solutions": [
+        {
+          "title": "Check name resolution from the client and from the IIS host",
+          "severity": "warning",
+          "steps": [
+            "Resolve-DnsName <host> -Type A on both sides",
+            "Compare answers against the DNS server expected by policy"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Inspect the HOST_RESOLVER_IMPL_JOB events in the netlog", "skill": "netlog"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Shows which resolver attempts failed and with which error code.",
+         "how_to_collect": "Open edge://net-export, click Start Logging To Disk, reproduce the failure, then Stop.",
+         "skill": "netlog"}
+      ]
+    },
+    "proxy_issue": {
+      "solutions": [
+        {
+          "title": "Bypass / fix the proxy configuration for the affected host",
+          "severity": "warning",
+          "steps": [
+            "Inspect the effective proxy: netsh winhttp show proxy",
+            "Test the request with the proxy disabled or with an explicit PAC entry"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Read the PROXY_RESOLUTION_SERVICE events in the netlog", "skill": "netlog"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Identifies which proxy decision blocked the request and at what hop.",
+         "how_to_collect": "Open edge://net-export, click Start Logging To Disk, reproduce the failure, then Stop.",
+         "skill": "netlog"}
+      ]
+    },
+    "kerberos_spn_mismatch": {
+      "solutions": [
+        {
+          "title": "Register the correct HTTP SPN against the IIS app-pool identity",
+          "severity": "critical",
+          "steps": [
+            "Identify the failing SPN in the netlog (AUTH_LIBRARY_INIT_SEC_CTX `spn` param)",
+            "List current SPNs: setspn -L <DOMAIN>\\<AppPoolSvcAccount>",
+            "Add the public host: setspn -S HTTP/<public-host> <DOMAIN>\\<AppPoolSvcAccount>",
+            "Add the backend host if Edge canonicalises via CNAME: setspn -S HTTP/<backend-host> <DOMAIN>\\<AppPoolSvcAccount>",
+            "Check for duplicates across the forest: setspn -X",
+            "On clients, purge the bad ticket: klist purge; reload to confirm 200 in the netlog"
+          ],
+          "references": [
+            "https://learn.microsoft.com/troubleshoot/windows-server/identity/troubleshoot-kerberos-authentication-problems",
+            "https://learn.microsoft.com/iis/configuration/system.webserver/security/authentication/windowsauthentication/"
+          ]
+        },
+        {
+          "title": "Make IIS use the app-pool identity for Kerberos decryption (useAppPoolCredentials)",
+          "severity": "warning",
+          "steps": [
+            "In applicationHost.config under <windowsAuthentication useKernelMode=\"true\">, set useAppPoolCredentials=\"true\"",
+            "Confirm the app pool runs as the same domain account that owns the SPN",
+            "Recycle the app pool and re-test"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Run `setspn -X` on a domain controller to find duplicate HTTP SPNs", "skill": "security_audit"},
+        {"action": "Capture a fresh netlog after the SPN change to confirm SEC_E_WRONG_PRINCIPAL is gone", "skill": "netlog"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "security_evtx", "why": "Kerberos failures surface as Event 4 (Kerberos client) and 4769 (KDC).",
+         "how_to_collect": "wevtutil epl Security sec.evtx; on DC also wevtutil epl Microsoft-Windows-Kerberos/Operational kerb.evtx",
+         "skill": "security_audit"}
+      ]
+    },
+    "auth_handshake_loop": {
+      "solutions": [
+        {
+          "title": "Trust the site so the browser sends default credentials silently",
+          "severity": "warning",
+          "steps": [
+            "Add the site origin to the Local Intranet zone (Group Policy: User Configuration > Administrative Templates > Windows Components > Internet Explorer > Internet Control Panel > Security Page > Site to Zone Assignment List)",
+            "For Edge specifically, set the policy AuthServerAllowlist=*.your-domain.tld (and AuthNegotiateDelegateAllowlist if delegation is required)",
+            "Verify with `gpresult /h` and re-test; expect the second leg to carry Authorization: Negotiate/NTLM"
+          ],
+          "references": [
+            "https://learn.microsoft.com/deployedge/microsoft-edge-policies#authserverallowlist"
+          ]
+        },
+        {
+          "title": "Re-check IIS Windows Authentication providers and Extended Protection",
+          "severity": "warning",
+          "steps": [
+            "Confirm WindowsAuthentication module is enabled and Anonymous is disabled on the affected path",
+            "If clients are behind an SSL terminator, set <extendedProtection tokenChecking=\"None\"/>",
+            "Ensure providers order is `Negotiate,NTLM` for broadest client support"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Capture a netlog with edge://net-export and look for repeated 401 with no Authorization header on the second leg", "skill": "netlog"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Confirms whether the browser ever attempts the second leg of the handshake.",
+         "how_to_collect": "Open edge://net-export, Start Logging To Disk, reproduce, Stop.",
+         "skill": "netlog"}
+      ]
+    },
+    "tls_handshake_failure": {
+      "solutions": [
+        {
+          "title": "Diagnose TLS protocol / cipher mismatch on the IIS binding",
+          "severity": "critical",
+          "steps": [
+            "openssl s_client -connect <host>:443 -servername <host> -tls1_2",
+            "Inspect SCHANNEL events 36874 / 36888 in System log",
+            "On Windows Server, verify TLS 1.2/1.3 enabled in HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols"
+          ]
+        }
+      ],
+      "next_steps": [
+        {"action": "Cross-check System log for SCHANNEL events in the same window", "skill": "event_log"}
+      ],
+      "additional_logs_needed": [
+        {"log_kind": "netlog", "why": "Shows the exact SSL_HANDSHAKE_ERROR / alert code the client received.",
+         "how_to_collect": "Open edge://net-export, Start Logging To Disk, reproduce, Stop.",
+         "skill": "netlog"}
+      ]
+    }
+  }
+}

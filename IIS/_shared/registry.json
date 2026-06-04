@@ -1,0 +1,133 @@
+{
+  "$schema": "./schemas/registry.schema.json",
+  "version": "2.0",
+  "skills": {
+    "iis_logs": {
+      "folder": "IIS_logs",
+      "entry": {
+        "python": "IIS_logs/scripts/iis_analyzer.py",
+        "pwsh":   "IIS_logs/scripts/iis_analyzer.ps1"
+      },
+      "role": "entry_point",
+      "produces": ["problems", "metrics", "skills_to_trigger"],
+      "triggers_for": []
+    },
+    "httperror": {
+      "folder": "httperror",
+      "entry": {
+        "python": "httperror/scripts/httperr_analyzer.py",
+        "pwsh":   "httperror/scripts/httperr_analyzer.ps1"
+      },
+      "role": "follow_up",
+      "needs_admin": false,
+      "triggers_for": ["5xx_error"]
+    },
+    "event_log": {
+      "folder": "event_log",
+      "entry": {
+        "python": "event_log/scripts/event_log_analyzer.py",
+        "pwsh":   "event_log/scripts/event_log_analyzer.ps1"
+      },
+      "role": "follow_up",
+      "needs_admin": true,
+      "triggers_for": ["5xx_error", "high_latency", "auth_error"]
+    },
+    "app_crash": {
+      "folder": "app_crash",
+      "entry": {
+        "python": "app_crash/scripts/app_crash_analyzer.py",
+        "pwsh":   "app_crash/scripts/app_crash_analyzer.ps1"
+      },
+      "role": "follow_up",
+      "needs_admin": true,
+      "triggers_for": ["5xx_error"]
+    },
+    "security_audit": {
+      "folder": "security_audit",
+      "entry": {
+        "python": "security_audit/scripts/security_audit_analyzer.py",
+        "pwsh":   "security_audit/scripts/security_audit_analyzer.ps1"
+      },
+      "role": "follow_up",
+      "needs_admin": true,
+      "status": "python_framework_pwsh_complete",
+      "triggers_for": ["auth_error"]
+    },
+    "resource_monitor": {
+      "folder": "resource_monitor",
+      "entry": {
+        "python": "resource_monitor/scripts/resource_monitor.py",
+        "pwsh":   "resource_monitor/scripts/resource_monitor.ps1"
+      },
+      "role": "follow_up",
+      "needs_admin": true,
+      "status": "python_framework_pwsh_complete",
+      "triggers_for": ["high_latency"]
+    },
+    "firewall": {
+      "folder": "firewall",
+      "entry": {
+        "python": "firewall/scripts/firewall_analyzer.py",
+        "pwsh":   "firewall/scripts/firewall_analyzer.ps1"
+      },
+      "role": "follow_up",
+      "needs_admin": true,
+      "status": "python_framework_pwsh_complete",
+      "triggers_for": ["suspicious_traffic"]
+    },
+    "orchestrator": {
+      "folder": "orchestrator",
+      "entry": {
+        "python": "orchestrator/scripts/skill_orchestrator.py"
+      },
+      "role": "coordinator|entry_point",
+      "accepts_folder": true,
+      "produces": ["discovery", "error_locator", "executed", "results", "secondary", "root_cause_chain", "report_html_path"],
+      "consumes": "iis_logs.output"
+    },
+    "ftp_logs": {
+      "folder": "ftp_logs",
+      "entry": {
+        "python": "ftp_logs/scripts/ftp_analyzer.py"
+      },
+      "role": "entry_point",
+      "needs_admin": false,
+      "produces": ["sessions", "session_stats", "problems", "skills_to_trigger"],
+      "triggers_for": []
+    },
+    "netlog": {
+      "folder": "netlog",
+      "entry": {
+        "python": "netlog/scripts/netlog_analyzer.py"
+      },
+      "role": "follow_up",
+      "needs_admin": false,
+      "consumes_log_kind": ["netlog"],
+      "triggers_for": ["client_request_failure", "cert_error", "dns_issue", "proxy_issue", "high_latency",
+                       "kerberos_spn_mismatch", "auth_handshake_loop", "tls_handshake_failure", "auth_error"]
+    }
+  },
+  "shared_modules": {
+    "python": "_shared/contract.py",
+    "pwsh":   "_shared/Contract.psm1"
+  },
+  "problem_types": {
+    "5xx_error":           {"severity_default": "critical", "follow_ups": ["httperror", "event_log", "app_crash"]},
+    "high_latency":        {"severity_default": "warning",  "follow_ups": ["resource_monitor", "event_log"]},
+    "auth_error":          {"severity_default": "warning",  "follow_ups": ["security_audit", "event_log", "netlog"]},
+    "suspicious_traffic":  {"severity_default": "warning",  "follow_ups": ["firewall"]},
+    "not_found":           {"severity_default": "info",     "follow_ups": []},
+    "traffic_spike":       {"severity_default": "warning",  "follow_ups": []},
+    "ftp_auth_failure":    {"severity_default": "warning",  "follow_ups": ["firewall", "security_audit"]},
+    "ftp_upload_error":    {"severity_default": "warning",  "follow_ups": ["event_log"]},
+    "ftp_brute_force":     {"severity_default": "critical", "follow_ups": ["firewall"]},
+    "ftp_incomplete_session": {"severity_default": "info",  "follow_ups": ["event_log"]},
+    "client_request_failure": {"severity_default": "warning", "follow_ups": ["netlog"]},
+    "cert_error":          {"severity_default": "critical", "follow_ups": ["netlog"]},
+    "dns_issue":           {"severity_default": "warning",  "follow_ups": ["netlog"]},
+    "proxy_issue":         {"severity_default": "warning",  "follow_ups": ["netlog"]},
+    "kerberos_spn_mismatch": {"severity_default": "critical", "follow_ups": ["security_audit", "event_log"]},
+    "auth_handshake_loop":   {"severity_default": "warning",  "follow_ups": ["netlog", "security_audit"]},
+    "tls_handshake_failure": {"severity_default": "critical", "follow_ups": ["netlog", "event_log"]}
+  }
+}

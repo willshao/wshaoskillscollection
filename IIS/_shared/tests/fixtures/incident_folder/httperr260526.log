@@ -1,0 +1,8 @@
+#Software: Microsoft HTTPAPI 2.0
+#Version: 1.0
+#Date: 2026-05-26 10:00:00
+#Fields: date time c-ip c-port s-ip s-port cs-version cs-method cs-uri sc-status s-siteid s-reason s-queuename
+2026-05-26 10:15:01 10.0.0.10 51100 10.0.0.50 80 HTTP/1.1 GET /api/orders 503 1 Timer_AppPool -
+2026-05-26 10:15:02 10.0.0.10 51101 10.0.0.50 80 HTTP/1.1 GET /api/orders 503 1 Timer_AppPool -
+2026-05-26 10:15:30 10.0.0.11 51102 10.0.0.50 80 HTTP/1.1 POST /api/checkout 503 1 Connection_Abandoned_By_AppPool -
+2026-05-26 10:16:00 10.0.0.10 51103 10.0.0.50 80 HTTP/1.1 GET /api/orders 503 1 Timer_AppPool -

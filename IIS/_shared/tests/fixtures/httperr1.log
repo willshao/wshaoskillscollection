@@ -1,0 +1,6 @@
+#Software: Microsoft HTTPAPI 2.0
+#Version: 1.0
+#Date: 2026-05-26 10:00:00
+#Fields: date time c-ip c-port s-ip s-port cs-version cs-method cs-uri sc-status s-siteid s-reason s-queuename
+2026-05-26 10:00:01 10.0.0.5 51000 10.0.0.50 80 HTTP/1.1 GET / 503 1 ConnLimit -
+2026-05-26 10:00:02 10.0.0.6 51001 10.0.0.50 80 HTTP/1.1 GET /api 503 1 Timer_ConnectionIdle -

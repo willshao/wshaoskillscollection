@@ -1,0 +1,124 @@
+[
+  {
+    "id": "ie_mode_enable",
+    "title": "Enable Internet Explorer (IE) mode for a site in Edge",
+    "keywords": ["ie", "internet explorer", "mode", "enable", "compatibility"],
+    "aliases": ["ie mode", "legacy site", "activex", "trident"],
+    "answer": "Per-user (test only):\n1. Open `edge://settings/defaultBrowser`.\n2. Set 'Allow sites to be reloaded in Internet Explorer mode' to **Allow**.\n3. Restart Edge.\n4. Right-click the tab → 'Reload tab in Internet Explorer mode'.\n\nEnterprise (recommended):\n1. Author an IE Mode site list (XML) and host it on a URL reachable by clients.\n2. Set the `InternetExplorerIntegrationSiteList` Edge policy to that URL.\n3. Set `InternetExplorerIntegrationLevel` = `IEMode (1)`.\nUsers do not need to manually enable IE mode when the policy is in place.",
+    "doc_links": [
+      "https://learn.microsoft.com/deployedge/edge-ie-mode",
+      "https://learn.microsoft.com/deployedge/edge-ie-mode-policies"
+    ]
+  },
+  {
+    "id": "reset_edge",
+    "title": "Reset Microsoft Edge to default settings",
+    "keywords": ["reset", "restore", "defaults", "factory"],
+    "aliases": ["start over", "clean slate"],
+    "answer": "1. Open `edge://settings/resetProfileSettings`.\n2. Click **Reset**.\nThis resets the startup page, new tab page, search engine and pinned tabs, disables extensions, and clears temporary data (cookies, cache). It does **not** delete history, favorites, or passwords.\n\nIf reset doesn't help, create a new profile (`edge://settings/profiles`) and verify there. As a last resort, close Edge and delete the profile folder under `%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\<Profile>` after backing it up.",
+    "doc_links": [
+      "https://support.microsoft.com/topic/reset-microsoft-edge-settings-7a18a0e8-2820-cda4-c189-c4d9f3a73615"
+    ]
+  },
+  {
+    "id": "managed_by_org",
+    "title": "Why does Edge say 'Managed by your organization'?",
+    "keywords": ["managed", "organization", "policies", "policy"],
+    "aliases": ["managed browser", "managed by your organisation"],
+    "answer": "Edge shows this banner whenever **any** policy is applied via:\n- Group Policy (`HKLM/HKCU\\Software\\Policies\\Microsoft\\Edge`)\n- An MDM (Intune)\n- A force-installed extension\n- Some third-party security products that write Edge policies\n\nGo to `edge://policy` to see every applied policy and its source. To diagnose programmatically, use the `edge_policy` skill in this collection. On a personal device the cause is usually a leftover policy from an installed app — search the registry path above and remove unused values."
+  },
+  {
+    "id": "default_browser",
+    "title": "Set Microsoft Edge as the default browser",
+    "keywords": ["default", "browser", "set"],
+    "aliases": ["make edge default"],
+    "answer": "1. Windows: Settings → Apps → Default apps → search for Edge → **Set default**.\n2. Or open `edge://settings/defaultBrowser` and click **Make default**.\n3. To set per-file-type/protocol associations (HTTP, HTTPS, .htm, .html, PDF, SVG), use the same Default apps page.\n\nEnterprises: deploy `DefaultAssociationsConfiguration` via Group Policy (`Computer Configuration → Administrative Templates → Windows Components → File Explorer`)."
+  },
+  {
+    "id": "sync_setup",
+    "title": "Turn on Microsoft Edge sync",
+    "keywords": ["sync", "favorites", "passwords", "across", "devices"],
+    "aliases": ["enable sync", "sign in"],
+    "answer": "1. Open `edge://settings/profiles` and sign in with a Microsoft account (consumer) or work/school account (Entra ID).\n2. Click **Sync** and toggle the categories you want (Favorites, Passwords, Settings, Open tabs, History, Extensions, Collections, Payment info).\n3. For organizational accounts, the IT admin can disable categories via `SyncDisabled` or `SyncTypesListDisabled` policies — check `edge://policy`.\n\nIf sync is stuck, run `edge_diagnostics` and look for the `sync_error` problem type, or visit `edge://sync-internals`.",
+    "doc_links": [
+      "https://support.microsoft.com/topic/microsoft-edge-sync-faq-93d62fa1-9c2d-23d7-b7ec-d2e2a7a16ee9"
+    ]
+  },
+  {
+    "id": "flags",
+    "title": "Where are Microsoft Edge experimental flags?",
+    "keywords": ["flags", "experiments", "experimental", "feature"],
+    "aliases": ["edge flags", "feature toggle"],
+    "answer": "Open `edge://flags`. These are unsupported experiments — use only for testing. Common picks:\n- `#edge-sleeping-tabs` (memory savings)\n- `#parallel-downloading`\n- `#edge-tab-groups-collapse-freezing`\n\nTo persist flags via launch parameters, edit the Edge shortcut Target and append `--enable-features=Feature1,Feature2`."
+  },
+  {
+    "id": "clear_cache",
+    "title": "Clear Edge cache, cookies, or browsing history",
+    "keywords": ["clear", "cache", "cookies", "history", "browsing", "data"],
+    "aliases": ["delete history", "ctrl shift del"],
+    "answer": "Press **Ctrl+Shift+Del** (or open `edge://settings/clearBrowserData`). Choose:\n- Time range (Last hour … All time)\n- Items: Browsing history, Download history, Cookies and other site data, Cached images and files, Passwords, Autofill form data, Site permissions.\n\nClick **Clear now**. To auto-clear on close, configure `edge://settings/privacy` → 'Choose what to clear every time you close the browser'."
+  },
+  {
+    "id": "incognito_inprivate",
+    "title": "Open an InPrivate (incognito) window",
+    "keywords": ["inprivate", "incognito", "private", "window"],
+    "aliases": ["private browsing", "porn mode"],
+    "answer": "Keyboard: **Ctrl+Shift+N**. Or click the profile menu → 'New InPrivate window'.\n\nInPrivate keeps no history, cookies, or form data after the window closes. It does **not** hide your activity from your employer, ISP, or the sites you visit. Extensions are disabled by default; enable per-extension via `edge://extensions` → 'Allow in InPrivate'."
+  },
+  {
+    "id": "shortcuts",
+    "title": "Most useful Microsoft Edge keyboard shortcuts",
+    "keywords": ["shortcut", "shortcuts", "keyboard", "hotkey"],
+    "aliases": ["keys", "hotkeys"],
+    "answer": "| Action | Shortcut |\n|---|---|\n| New tab | Ctrl+T |\n| Reopen closed tab | Ctrl+Shift+T |\n| Switch tabs | Ctrl+Tab / Ctrl+Shift+Tab |\n| Tab N (1..8) | Ctrl+N |\n| Last tab | Ctrl+9 |\n| Address bar | Ctrl+L or Alt+D or F6 |\n| Find on page | Ctrl+F |\n| DevTools | F12 or Ctrl+Shift+I |\n| Browser Task Manager | Shift+Esc |\n| Zoom in/out/reset | Ctrl++ / Ctrl+- / Ctrl+0 |\n| Clear browsing data | Ctrl+Shift+Del |\n| Print | Ctrl+P |\n| Full screen | F11 |\n| InPrivate | Ctrl+Shift+N |"
+  },
+  {
+    "id": "task_manager",
+    "title": "Open Edge's built-in Browser Task Manager",
+    "keywords": ["task", "manager", "browser", "shift+esc"],
+    "aliases": ["which tab is using cpu", "process manager"],
+    "answer": "Press **Shift+Esc** inside Edge (or Menu → More tools → Browser task manager). You'll see per-tab / per-extension / per-process CPU, memory, network, and process IDs. Right-click a column header to add hidden columns like 'Process priority' or 'Idle wake-ups'."
+  },
+  {
+    "id": "sleeping_tabs",
+    "title": "Enable Sleeping Tabs to save memory",
+    "keywords": ["sleeping", "tabs", "memory", "save"],
+    "aliases": ["doze tabs", "tab freezing"],
+    "answer": "Open `edge://settings/system`. Under **Optimize Performance**:\n1. Toggle **Save resources with sleeping tabs** on.\n2. Set 'Put inactive tabs to sleep after' (default 2h, can drop to 30s).\n3. Add exceptions for sites that should never sleep.\n\nThis can cut Edge's working set 30–80% on long-running sessions."
+  },
+  {
+    "id": "profile_new",
+    "title": "Create or switch Microsoft Edge profiles",
+    "keywords": ["profile", "profiles", "switch", "add", "new"],
+    "aliases": ["multiple accounts", "work and personal"],
+    "answer": "Click the profile icon (top right) → **Add profile** → choose Work or Personal → optionally sign in.\n\nEach profile has its own bookmarks, history, extensions, and cookies. Files on disk live at `%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\<Profile name>`. To open a specific profile from a shortcut, append `--profile-directory=\"Profile 1\"` to the Target of an Edge shortcut."
+  },
+  {
+    "id": "import_data",
+    "title": "Import bookmarks/passwords/history from another browser",
+    "keywords": ["import", "bookmarks", "favorites", "passwords", "from"],
+    "aliases": ["migrate chrome", "migrate firefox"],
+    "answer": "Open `edge://settings/importData`. Choose source (Chrome, Firefox, Safari, Edge Legacy, HTML file, CSV). Tick the data types and click **Import**. Note: importing passwords from Chrome requires Chrome to be installed and the source profile to be signed in."
+  },
+  {
+    "id": "uninstall",
+    "title": "Uninstall Microsoft Edge",
+    "keywords": ["uninstall", "remove", "delete", "edge"],
+    "aliases": ["get rid of edge"],
+    "answer": "On Windows 10/11, the Edge Stable channel is treated as a system component and the standard 'Uninstall' option in Settings → Apps may be greyed out.\n\nSupported removals:\n- **Edge Beta / Dev / Canary**: Settings → Apps → Installed apps → Uninstall normally.\n- **Edge Stable**: not officially uninstallable on consumer Windows 11; on Windows 10 N or specific EEA SKUs the option is exposed. Group Policy `Allowsxs` / `RemoveAppx` paths exist for managed devices.\n\nIf the user just wants Edge to stop launching, change file/protocol associations to another browser instead."
+  },
+  {
+    "id": "update_edge",
+    "title": "Update Microsoft Edge to the latest version",
+    "keywords": ["update", "upgrade", "version", "latest"],
+    "aliases": ["how to update edge"],
+    "answer": "Open `edge://settings/help`. Edge will check Microsoft Update and download/install any newer build, then prompt to restart. Auto-updates happen in the background via the **Microsoft Edge Update** service (`MicrosoftEdgeUpdate.exe`).\n\nIf updates are blocked, look for `UpdateDefault`, `Update{56eb18f8-...}`, or `Install{56eb18f8-...}` under `HKLM\\Software\\Policies\\Microsoft\\EdgeUpdate` (or run the `edge_policy` skill)."
+  },
+  {
+    "id": "devtools",
+    "title": "Open Microsoft Edge DevTools",
+    "keywords": ["devtools", "f12", "developer", "tools", "inspect"],
+    "aliases": ["console", "elements panel"],
+    "answer": "Press **F12** or **Ctrl+Shift+I**. Right-click any element → **Inspect** to jump to the Elements panel for that node.\n\nUseful entry points:\n- `Ctrl+Shift+C` — pick mode (hover → inspect)\n- `Ctrl+Shift+J` — go straight to Console\n- `Ctrl+Shift+M` — toggle device emulation\n- `Ctrl+Shift+P` — DevTools command palette"
+  }
+]
