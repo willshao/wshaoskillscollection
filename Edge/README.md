@@ -78,6 +78,8 @@ Diagnoses proxy settings, DNS resolution, and certificate validity affecting Edg
 ### edge_policy
 Reads the `HKLM\Software\Policies\Microsoft\Edge` and `HKCU\Software\Policies\Microsoft\Edge` registry hives. Lists all applied Group Policy / Intune / MDM policies and flags ones that could block features or updates. Triggered by `managed_browser`, `feature_blocked`, `update_blocked`, `extension_blocked`.
 
+**Microsoft Learn MCP integration.** The skill performs the registry walk locally but the *meaning* of each policy lives on MS Learn. It therefore publishes a `raw.mslearn_lookup` block that tells the agent which MCP queries to run: one `microsoft_docs_fetch` for the master policy reference, up to 8 per-policy `microsoft_docs_search` calls (high-interest policies first), and up to 3 category-level searches. The agent merges the official definitions, valid value tables, and deprecation notes back into the reply. Set `extra.use_mslearn: false` for fully offline use.
+
 ### edge_extensions
 Enumerates installed extensions per profile from `Preferences` / `Secure Preferences`. Flags risky extensions (unusual permissions, disabled by policy, force-installed). Triggered by `extension_issue`, `high_memory`, `page_slow`.
 

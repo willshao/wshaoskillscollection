@@ -54,8 +54,46 @@ sync, browser_features, network).
 ## Invocation
 
 ```powershell
+# Default: registry walk + MS Learn MCP suggestions
 python edge_policy\scripts\edge_policy.py
+
+# Offline-only (no MS Learn suggestions)
+python edge_policy\scripts\edge_policy.py '{"extra":{"use_mslearn":false}}'
 ```
+
+## MS Learn MCP integration
+
+The Python skill cannot call MCP tools itself — `microsoft_docs_search`,
+`microsoft_docs_fetch`, and `microsoft_code_sample_search` are only available
+to the AI agent running inside Copilot CLI. So the skill publishes a
+structured `raw.mslearn_lookup` block telling the agent which MCP queries to
+run in order to fetch the **official policy definitions, valid values, and
+deprecation status** for each applied policy.
+
+The agent contract is:
+
+1. `edge_policy` walks the registry and returns `raw.policies[]` (names,
+   values, types, categories).
+2. The skill builds `raw.mslearn_lookup` containing:
+   - A `microsoft_docs_fetch` call for the master policy reference
+     (`https://learn.microsoft.com/deployedge/microsoft-edge-policies`).
+   - Up to **8** `microsoft_docs_search` calls — one per applied policy,
+     prioritising a curated list of high-interest names (forced extensions,
+     IE mode, proxy, sync, SmartScreen, update channel pinning, …). Numeric
+     value names like `"1"` inside list policies are resolved back to their
+     parent subkey leaf (e.g. `ExtensionInstallForcelist`).
+   - Up to **3** category-level searches (e.g. *"Microsoft Edge security
+     policies configure"*) for cross-policy guidance.
+   - A `truncated: true` flag if more policies exist than the per-policy cap.
+3. The agent loops over `suggested_calls`, invokes each MCP tool, and merges
+   the live results — official definitions, valid value tables, deprecation
+   notes, references — into the final reply, citing the URLs.
+4. To force offline behaviour (air-gapped, CI), set
+   `extra.use_mslearn: false`; the skill then omits the block entirely.
+
+A `[mcp:microsoft_docs_search]` tag is added to `recommendations[]` and a
+`NextStep` with `skill: microsoft_docs_mcp` is appended so the cue surfaces
+even in flattened views.
 
 ## Report sections (envelope v2.1)
 

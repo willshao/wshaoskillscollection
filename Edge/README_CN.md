@@ -78,6 +78,8 @@
 ### edge_policy
 读取 `HKLM\Software\Policies\Microsoft\Edge` 和 `HKCU\Software\Policies\Microsoft\Edge` 注册表项，列出所有已应用的组策略/Intune/MDM 策略，并标记可能阻止功能或更新的策略。由 `managed_browser`、`feature_blocked`、`update_blocked`、`extension_blocked` 触发。
 
+**Microsoft Learn MCP 集成。** 该技能本地完成注册表遍历，但每个策略的*含义*位于 MS Learn 上。因此它输出一个 `raw.mslearn_lookup` 数据块，告诉 Agent 应调用哪些 MCP 查询：一个 `microsoft_docs_fetch`（策略参考主文档）、最多 8 个针对单一策略的 `microsoft_docs_search` 调用（优先高关注度策略）、以及最多 3 个分类级别的搜索。Agent 将官方定义、有效值表和弃用说明融合回回复中。设置 `extra.use_mslearn: false` 即可完全离线运行。
+
 ### edge_extensions
 从 `Preferences` / `Secure Preferences` 枚举每个配置文件下安装的扩展程序，标记高风险扩展（异常权限、被策略禁用、强制安装等）。由 `extension_issue`、`high_memory`、`page_slow` 触发。
 
