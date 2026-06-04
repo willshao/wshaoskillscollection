@@ -94,6 +94,8 @@ Triggered by `page_load_failure`, `cert_error`, `proxy_issue`, `dns_issue`, `pag
 ### edge_qa
 A built-in knowledge-base skill for common Edge questions: feature flags, keyboard shortcuts, IE mode, sync behaviour, profile management, enterprise deployment, etc. Triggered by `question` problem type or direct `edge_qa` invocation.
 
+**Microsoft Learn MCP integration.** The Python skill itself cannot call MCP tools (they only exist inside the Copilot CLI agent). Instead it publishes a `raw.mslearn_lookup` block whose `suggested_calls[]` array tells the agent which `microsoft_docs_search` / `microsoft_docs_fetch` queries to run. The agent then merges the live MS Learn results into its final answer and cites the URLs. See [edge_qa/SKILL.MD](edge_qa/SKILL.MD) for the full contract; set `extra.use_mslearn: false` for fully offline use.
+
 ### orchestrator
 Receives the `edge_diagnostics` output, dispatches all listed follow-up skills, deduplicates advisory fields, computes the missing-log gate, and writes `raw.operator_summary` (a Markdown summary terminal-friendly without an HTML report).
 
@@ -129,7 +131,17 @@ python orchestrator/scripts/edge_orchestrator.py \
 ### Flow 3 — Knowledge Question
 
 ```bash
+# 1. Local KB lookup + emit MS Learn MCP suggestions
 python edge_qa/scripts/edge_qa.py '{"question":"How do I configure IE mode via Group Policy?"}'
+
+# 2. The agent (Copilot CLI) reads raw.mslearn_lookup.suggested_calls and runs:
+#      microsoft_docs_search("Microsoft Edge How do I configure IE mode via Group Policy?")
+#      microsoft_docs_search("Microsoft Edge Enable Internet Explorer (IE) mode for a site")
+#      microsoft_docs_fetch("https://learn.microsoft.com/deployedge/edge-ie-mode")
+#    then merges the live results with the local KB answer and cites the URLs.
+
+# Offline-only (skip MCP suggestions):
+python edge_qa/scripts/edge_qa.py '{"question":"How do I enable IE mode?","extra":{"use_mslearn":false}}'
 ```
 
 ### Flow 4 — Netlog Analysis

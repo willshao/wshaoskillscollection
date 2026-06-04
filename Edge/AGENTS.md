@@ -19,7 +19,7 @@ A skill collection rooted at this folder. Each subfolder is one skill:
 | `edge_policy` | `edge_policy/` | `scripts/edge_policy.py` | Inspect `HKLM/HKCU\Software\Policies\Microsoft\Edge`, list applied managed policies. |
 | `edge_extensions` | `edge_extensions/` | `scripts/edge_extensions.py` | Enumerate installed extensions per profile; flag risky/disabled/forced ones. |
 | `edge_netlog` | `edge_netlog/` | `scripts/edge_netlog.py` | Parse Chromium `edge://net-export` JSON files. Classifies certificate / DNS / proxy / generic page-load failures and slow URL requests. Feeds `page_load_failure`, `cert_error`, `dns_issue`, `proxy_issue`, `page_slow`. |
-| `edge_qa` | `edge_qa/` | `scripts/edge_qa.py` | Knowledge-base Q&A for common Edge questions (flags, keyboard shortcuts, IE mode, sync, profiles, etc.). |
+| `edge_qa` | `edge_qa/` | `scripts/edge_qa.py` | Knowledge-base Q&A for common Edge questions (flags, keyboard shortcuts, IE mode, sync, profiles, etc.). Emits `raw.mslearn_lookup` MCP suggestions that the agent should run via `microsoft_docs_search` / `microsoft_docs_fetch`. |
 | `orchestrator` | `orchestrator/` | `scripts/edge_orchestrator.py` | Run multiple skills based on a problem set, fuse results. |
 
 The authoritative registry is [_shared/registry.json](_shared/registry.json).
@@ -122,6 +122,19 @@ how do I configure IE mode site list via Group Policy? use edge_qa
    investigations (e.g., reading another user's profile, querying enterprise
    policy in HKLM) may need elevation; the affected skill will report
    `needs_elevation: true` in its `raw` block when it hits this limit.
+8. **After running `edge_qa`, augment its answer with the Microsoft Learn
+   MCP.** The skill publishes a `raw.mslearn_lookup` block with a
+   `suggested_calls[]` array — each item has `{tool, query, why}`. For every
+   item:
+   - If `tool == "microsoft_docs_search"` → call the `microsoft_docs_search`
+     MCP tool with the given `query`.
+   - If `tool == "microsoft_docs_fetch"` → call `microsoft_docs_fetch` with
+     the given URL.
+   Merge the live results into the final reply and cite the returned URLs.
+   When the local KB had **zero matches** (`raw.matches` is empty and
+   `confidence == "low"`), the MCP results become the **primary** answer.
+   If `extra.use_mslearn: false` is set or `raw.mslearn_lookup` is absent,
+   skip the MCP step (offline mode).
 
 ## Project conventions
 

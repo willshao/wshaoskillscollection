@@ -94,6 +94,8 @@
 ### edge_qa
 内置知识库技能，回答常见 Edge 问题：功能标志、键盘快捷键、IE 模式、同步行为、配置文件管理、企业部署等。由 `question` 问题类型或直接调用触发。
 
+**Microsoft Learn MCP 集成。** Python 技能本身无法调用 MCP 工具（它们仅存在于 Copilot CLI Agent 中）。该技能改为输出 `raw.mslearn_lookup` 数据块，其 `suggested_calls[]` 数组告诉 Agent 应调用哪些 `microsoft_docs_search` / `microsoft_docs_fetch` 查询。Agent 随后将 MS Learn 的实时结果融合到最终答案中，并引用其 URL。完整契约见 [edge_qa/SKILL.MD](edge_qa/SKILL.MD)；如需完全离线运行，请设置 `extra.use_mslearn: false`。
+
 ### orchestrator
 接收 `edge_diagnostics` 的输出，分发所有列出的后续技能，去重建议字段，计算缺失日志门控，并写入 `raw.operator_summary`（无需 HTML 查看器即可在终端阅读的 Markdown 摘要）。
 
@@ -129,7 +131,17 @@ python orchestrator/scripts/edge_orchestrator.py \
 ### 流程三 — 知识问答
 
 ```bash
+# 1. 本地 KB 查询 + 输出 MS Learn MCP 建议
 python edge_qa/scripts/edge_qa.py '{"question":"如何通过组策略配置 IE 模式？"}'
+
+# 2. Agent（Copilot CLI）读取 raw.mslearn_lookup.suggested_calls 并执行：
+#      microsoft_docs_search("Microsoft Edge 如何通过组策略配置 IE 模式？")
+#      microsoft_docs_search("Microsoft Edge Enable Internet Explorer (IE) mode for a site")
+#      microsoft_docs_fetch("https://learn.microsoft.com/deployedge/edge-ie-mode")
+#    然后将 MS Learn 的实时结果与本地 KB 答案融合，并引用相应 URL。
+
+# 完全离线（跳过 MCP 建议）：
+python edge_qa/scripts/edge_qa.py '{"question":"如何启用 IE 模式？","extra":{"use_mslearn":false}}'
 ```
 
 ### 流程四 — Netlog 分析
