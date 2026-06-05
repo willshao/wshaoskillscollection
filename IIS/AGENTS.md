@@ -99,11 +99,39 @@ investigate 5xx spike between 10:00 and 10:30 today: run iis_logs first, then or
 **Direct invocation by the agent:**
 - Single skill: `python <skill>/scripts/<entry>.py '<json-context>'`
 - IIS auto-trigger: `python IIS_logs/scripts/iis_analyzer.py <log_file> --auto-trigger`
-- Full orchestration: `python orchestrator/scripts/skill_orchestrator.py '<iis-result-json>'`
+- **Folder orchestration (preferred):** `python orchestrator/scripts/skill_orchestrator.py "<folder>" [--report <html>]` — pass the folder **as a positional argument**, never as JSON.
+- Legacy pipe orchestration (only when you already have an `iis_logs` payload): `python IIS_logs/scripts/iis_analyzer.py <log> | python orchestrator/scripts/skill_orchestrator.py`
 
 ## Rules for the agent
 
 0. **Folder → `orchestrator`**: when the user provides a folder (single path containing several log kinds, an incident bundle, an exported `LogFiles\` tree, etc.), invoke `orchestrator` first — it discovers and dispatches the right entry skills itself.
+   - **Invocation**: pass the folder as a **positional argument**: `python orchestrator/scripts/skill_orchestrator.py "<folder>" [--report <html>]`. Do **NOT** wrap it in JSON like `'{"extra":{"folder":"..."}}'`; that targets legacy pipe mode. (The orchestrator now auto-promotes that mistake into folder mode, but the positional form is the documented path.)
+   - **Mandatory reporting**: the orchestrator's per-sub-skill calls happen inside one Python subprocess and are invisible to the agent UI. When you summarise the orchestrator's JSON for the user, you **must** surface these keys (use the snippet below):
+     - `executed_summary` (top-level) — one-line "iis_logs OK, netlog OK, ..." proving which sub-skills ran.
+     - `raw.discovery` — per-log-kind file count, proving what the orchestrator classified in the folder.
+     - `raw.executed` — ordered list of sub-skill ids actually invoked.
+     - then the usual `root_cause`, `findings`, `solutions`, `next_steps`, `additional_logs_needed`.
+   - **Always surface stderr to the user.** The orchestrator prints a live `>>> running skill: iis_logs / netlog / event_log ...` trace on stderr. You **must** both save it to `orch.err` *and* print its full contents to the chat / terminal interface — never just redirect and drop it.
+     - PowerShell pattern:
+
+       ```powershell
+       python orchestrator/scripts/skill_orchestrator.py "<folder>" --report orch.html > orch.json 2> orch.err
+       Write-Host "----- orchestrator stderr (orch.err) -----"
+       Get-Content orch.err
+       Write-Host "----- end orchestrator stderr -----"
+       ```
+     - bash equivalent: `python ... "<folder>" --report orch.html > orch.json 2> orch.err; echo '----- orch.err -----'; cat orch.err`
+   - **Canonical summary snippet** (reuse verbatim; works for both folder and auto-promoted JSON modes):
+
+     ```python
+     python -c "import json,sys; d=json.load(sys.stdin); \
+       print('EXECUTED:', d.get('executed_summary')); \
+       print('DISCOVERY:', {k: len(v) for k,v in (d.get('raw',{}).get('discovery') or {}).items()}); \
+       print('SUBSKILLS:', d.get('raw',{}).get('executed')); \
+       print('ROOT:', d.get('root_cause')); print('CONF:', d.get('confidence')); \
+       [print(' -', f['severity'], '|', f['summary']) for f in d.get('findings', [])]; \
+       [print(' *', s.get('title')) for s in d.get('solutions', [])[:8]]"
+     ```
 1. **Single log file → `iis_logs` / `ftp_logs`**: for HTTP traffic, start from `iis_logs`; for FTP traffic, start from `ftp_logs`. Use this path only when the user pointed at one file (not a folder) and you do not need cross-log correlation.
 2. **Only call follow-up skills that the entry-point skill listed in `skills_to_trigger`** — do not invent new ones.
 3. **Pass `time_range` from the analysis** to every downstream skill; never use "now − 1 hour" as a fallback when a real range is known.

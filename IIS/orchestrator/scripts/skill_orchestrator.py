@@ -464,7 +464,14 @@ def main(argv: list[str] | None = None) -> int:
                 agent_summary_path=(Path(args.agent_summary)
                                     if args.agent_summary else None),
             )
-            result.emit()
+            # Lift raw.executed_summary to a top-level field so agents that
+            # only display the envelope's top keys still surface which
+            # sub-skills actually ran.
+            envelope = json.loads(result.to_json())
+            envelope["executed_summary"] = (
+                result.raw.get("executed_summary") if isinstance(result.raw, dict) else None
+            )
+            print(json.dumps(envelope, indent=2, ensure_ascii=True))
             return 0 if result.ok else 1
 
     # --- Legacy pipe mode (unchanged) -------------------------------------
@@ -476,6 +483,39 @@ def main(argv: list[str] | None = None) -> int:
     # Accept both the IIS analyzer's full envelope and its `raw` sub-block
     if isinstance(payload, dict) and "raw" in payload and "skills_to_trigger" in payload.get("raw", {}):
         payload = payload["raw"]
+
+    # Auto-promote a folder-mode JSON mistake into real folder mode.
+    # Agents sometimes pass `{"extra": {"folder": "<path>"}}` thinking that is
+    # how folder mode is invoked. Legacy pipe mode would silently return
+    # "Nothing to orchestrate" because `skills_to_trigger` is empty.
+    if (isinstance(payload, dict)
+            and not payload.get("skills_to_trigger")
+            and isinstance(payload.get("extra"), dict)):
+        extra = payload["extra"]
+        folder_hint = extra.get("folder") or extra.get("folder_path") or extra.get("path")
+        if folder_hint:
+            candidate = Path(str(folder_hint))
+            if candidate.exists() and candidate.is_dir():
+                _log(f"[orchestrator] auto-promoting JSON 'extra.folder' "
+                     f"to folder mode: {candidate}")
+                result = orchestrate_folder(
+                    folder=candidate,
+                    around=list(args.around),
+                    window=args.window,
+                    error_pattern=args.error,
+                    recursive=not args.no_recursive,
+                    per_skill_timeout=args.per_skill_timeout,
+                    total_timeout=args.total_timeout,
+                    report_path=Path(args.report) if args.report else None,
+                    agent_summary_path=(Path(args.agent_summary)
+                                        if args.agent_summary else None),
+                )
+                envelope = json.loads(result.to_json())
+                envelope["executed_summary"] = (
+                    result.raw.get("executed_summary") if isinstance(result.raw, dict) else None
+                )
+                print(json.dumps(envelope, indent=2, ensure_ascii=True))
+                return 0 if result.ok else 1
 
     result = orchestrate(payload, args.per_skill_timeout, args.total_timeout)
     result.emit()
@@ -923,6 +963,20 @@ def orchestrate_folder(folder: Path,
         _log(f"HTML report: {report_written}")
     _log("=" * 72)
 
+    # Build the one-line executed_summary so the agent can quote it back.
+    # Format: "<skill> OK" / "<skill> FAIL" comma-joined; "(none run)" if empty.
+    summary_parts: list[str] = []
+    for sid in executed:
+        env = results.get(sid)
+        ok_flag = bool(isinstance(env, dict) and env.get("ok"))
+        summary_parts.append(f"{sid} {'OK' if ok_flag else 'FAIL'}")
+    if secondary is not None:
+        summary_parts.append(
+            f"secondary {'OK' if secondary.get('ok') else 'FAIL'} "
+            f"({', '.join(fanout_calls) or '-'})"
+        )
+    executed_summary = ", ".join(summary_parts) or "(no entry skills run)"
+
     return SkillResult(
         skill=SKILL_ID,
         ok=not failures,
@@ -930,8 +984,7 @@ def orchestrate_folder(folder: Path,
         root_cause=" \u2192 ".join(item["finding"] for item in root_chain) or None,
         confidence=confidence,
         recommendations=[
-            f"Entry skills run: {len(executed)} ({', '.join(executed) or 'none'}).",
-            *([f"Secondary fan-out: {', '.join(fanout_calls)}"] if fanout_calls else []),
+            f"Executed: {executed_summary}",
             *([f"Failed skills: {', '.join(failures)}"] if failures else []),
             *(["Open the HTML report for a visual summary."] if report_written else []),
         ],
@@ -940,6 +993,7 @@ def orchestrate_folder(folder: Path,
         additional_logs_needed=agg_logs,
         raw={
             "mode": "folder",
+            "executed_summary": executed_summary,
             "input": {
                 "folder": str(folder),
                 "recursive": recursive,
